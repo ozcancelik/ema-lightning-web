@@ -3,7 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>EMA Lightning</title>
+<title>EMA Lightning · Tarayıcıda Türkçe seslendirme</title>
+<meta name="description" content="Türkçe metni sese çeviren EMA Lightning, tamamen tarayıcınızda çalışır. Kurulum ve sunucu yok; sayılar, tarihler ve saatler doğru okunur, metin cihazınızdan çıkmaz.">
+<link rel="canonical" href="https://ema-lightning-web.vercel.app/">
+<meta name="theme-color" content="#14123a">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="EMA Lightning">
+<meta property="og:locale" content="tr_TR">
+<meta property="og:url" content="https://ema-lightning-web.vercel.app/">
+<meta property="og:title" content="EMA Lightning · Tarayıcıda Türkçe seslendirme">
+<meta property="og:description" content="Kurulum yok, sunucu yok. Yazdığınız metin cihazınızdan çıkmaz; sayılar, tarihler ve saatler doğru okunur.">
+<meta property="og:image" content="https://ema-lightning-web.vercel.app/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="EMA Lightning: Türkçe seslendirme, tamamen tarayıcınızda.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="EMA Lightning · Tarayıcıda Türkçe seslendirme">
+<meta name="twitter:description" content="Kurulum yok, sunucu yok. Yazdığınız metin cihazınızdan çıkmaz.">
+<meta name="twitter:image" content="https://ema-lightning-web.vercel.app/og.jpg">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "EMA Lightning",
+  "url": "https://ema-lightning-web.vercel.app/",
+  "description": "Türkçe metin okuma (TTS) modeli EMA Lightning'in tarayıcıda çalışan sürümü. Model cihazda, WebGPU ya da WebAssembly ile çalışır; metin cihazdan çıkmaz.",
+  "inLanguage": "tr",
+  "applicationCategory": "MultimediaApplication",
+  "operatingSystem": "Web",
+  "isAccessibleForFree": true,
+  "author": { "@type": "Person", "name": "Özcan Çelik", "url": "https://github.com/ozcancelik" },
+  "isBasedOn": "https://huggingface.co/canberkkkkkk/ema-lightning",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0"
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@300;500&display=swap" rel="stylesheet">
@@ -42,7 +78,7 @@
   /* top bar */
   .top, .dock { pointer-events: auto; }
   .top { display: flex; align-items: center; gap: 16px; }
-  .mark { font: 500 15px/1 var(--display); letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+  .mark { margin: 0; font: 500 15px/1 var(--display); letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
   .mark svg { width: 18px; height: 18px; }
   .meta { margin-left: auto; display: flex; gap: 18px; color: var(--muted); font-size: 13px;
           font-variant-numeric: tabular-nums; }
@@ -158,10 +194,10 @@
 
 <div class="stage">
   <header class="top">
-    <div class="mark">
+    <h1 class="mark">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><defs><linearGradient id="wave" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7ab6"/><stop offset=".5" stop-color="#ffb066"/><stop offset="1" stop-color="#5fd4ff"/></linearGradient></defs><path d="M3 10v4M7.5 6v12M12 3v18M16.5 7v10M21 10v4" stroke="url(#wave)" stroke-width="2.4" stroke-linecap="round"/></svg>
       EMA Lightning
-    </div>
+    </h1>
     <div class="meta" aria-live="polite">
       <span id="mBackend"></span>
       <span class="opt" id="mFirst" hidden>ilk ses <b></b></span>

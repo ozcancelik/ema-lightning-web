@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ema-lightning-web.vercel.app/sitemap.xml
