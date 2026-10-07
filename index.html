@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EMA Lightning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@300;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --base: #14123a;
+    --ink: #eef0ff;
+    --muted: #c3c3e6;
+    --faint: rgba(238, 240, 255, 0.26);
+    --violet: #8b7dff;
+    --accent: #ffffff;
+    --accent-ink: #1a1440;
+    --focus: #ffd29a;
+    --glass: rgba(20, 16, 52, 0.42);
+    --line: rgba(255, 255, 255, 0.16);
+    --display: "Unbounded", "Onest", system-ui, sans-serif;
+    --body: "Onest", system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: radial-gradient(60% 60% at 20% 30%, #4a2f9e 0%, transparent 70%),
+                radial-gradient(50% 50% at 80% 40%, #8f2a63 0%, transparent 70%),
+                radial-gradient(70% 60% at 50% 100%, #1b2f7a 0%, transparent 70%), var(--base);
+    color: var(--ink); font: 15px/1.5 var(--body); overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  canvas#aura { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .stage { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; pointer-events: none;
+           padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom)); }
+
+  /* top bar */
+  .top, .dock { pointer-events: auto; }
+  .top { display: flex; align-items: center; gap: 16px; }
+  .mark { font: 500 15px/1 var(--display); letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+  .mark svg { width: 18px; height: 18px; }
+  .meta { margin-left: auto; display: flex; gap: 18px; color: var(--muted); font-size: 13px;
+          font-variant-numeric: tabular-nums; }
+  .meta b { color: var(--ink); font-weight: 500; }
+  .icon-btn { background: transparent; border: 1px solid var(--line); border-radius: 10px; width: 36px; height: 36px;
+              display: grid; place-items: center; cursor: pointer; color: var(--muted); }
+  .icon-btn:hover { color: var(--ink); border-color: rgba(160, 170, 255, 0.35); }
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  /* the words sit above the arc, which the shader draws 20% of the height below centre (30% from the bottom) */
+  .words { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(30vh + 64px);
+           width: min(1100px, calc(100% - 32px)); text-align: center; pointer-events: none; }
+  .lead { font: 300 clamp(28px, 4.4vw, 58px)/1.12 var(--display); letter-spacing: -0.035em; margin: 0;
+          text-wrap: balance; }
+  .lead .w { color: var(--faint); transition: color .25s ease, text-shadow .25s ease; }
+  .lead .w.said { color: rgba(238, 240, 255, 0.82); }
+  .lead .w.now { color: #fff; text-shadow: 0 0 24px rgba(255, 255, 255, 0.75); }
+  .lead.idle { color: #fff; pointer-events: auto; cursor: pointer; transition: opacity .2s; }
+  .lead.idle:hover { opacity: .85; }
+  .lead { text-shadow: 0 2px 30px rgba(20, 10, 60, 0.35); }
+  .sub { margin: 18px auto 0; max-width: 56ch; color: var(--muted); font-size: 15px; text-wrap: balance; }
+
+  /* composer */
+  .dock { grid-row: 3; align-self: end; justify-self: center; width: min(760px, 100%); display: grid; gap: 10px;
+          position: relative; }
+  .samples { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: 13px; color: rgba(238, 240, 255, 0.7); }
+  .samples button { background: none; border: 0; padding: 2px 0; color: rgba(238, 240, 255, 0.7); cursor: pointer;
+                    border-bottom: 1px dashed rgba(238, 240, 255, 0.35); }
+  .samples button:hover { color: var(--ink); border-bottom-color: var(--ink); }
+  .composer { display: flex; align-items: end; gap: 8px; padding: 8px; border-radius: 18px;
+              background: var(--glass); border: 1px solid var(--line);
+              backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%);
+              box-shadow: 0 20px 60px rgba(10, 6, 40, 0.35); }
+  .composer textarea { flex: 1; min-width: 0; resize: none; border: 0; background: transparent; padding: 10px 10px;
+                       max-height: 9.5em; min-height: 2.6em; line-height: 1.5; outline: none; }
+  .composer textarea::placeholder { color: rgba(154, 160, 200, 0.75); }
+  .speak { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 12px; padding: 0 18px;
+           height: 42px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;
+           box-shadow: 0 0 0 0 rgba(255, 179, 92, 0); transition: box-shadow .3s ease, opacity .2s; white-space: nowrap; }
+  .speak:hover:not(:disabled) { box-shadow: 0 0 28px rgba(255, 255, 255, 0.45); }
+  .speak:disabled { opacity: .45; cursor: default; }
+  .speak.stop { background: transparent; color: var(--ink); border: 1px solid rgba(255, 255, 255, 0.6); }
+  .speak svg { width: 15px; height: 15px; }
+  .hint { text-align: center; font-size: 12px; color: rgba(238, 240, 255, 0.6); min-height: 1.5em; }
+  .hint.err { color: #ff9b9b; }
+
+  .settings { position: absolute; right: 0; bottom: calc(100% + 8px); width: 280px; padding: 16px; border-radius: 16px;
+              background: rgba(24, 18, 60, 0.85); border: 1px solid var(--line); display: grid; gap: 14px;
+              backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+  .settings label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+  .settings .row { display: flex; justify-content: space-between; }
+  .settings output { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .settings input[type=range] { width: 100%; accent-color: #fff; }
+  .settings select, .settings input[type=number] { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line);
+              border-radius: 8px; padding: 6px 8px; }
+  .settings .note { font-size: 12px; color: rgba(238, 240, 255, 0.55); }
+  .settings .seed { display: flex; gap: 6px; }
+  .settings .seed input { flex: 1; min-width: 0; }
+  .settings .seed button { background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px;
+                           color: var(--muted); cursor: pointer; }
+
+  @media (max-width: 640px) {
+    .meta .opt { display: none; }
+    .words { bottom: calc(30vh + 40px); }
+    .speak span { display: none; }
+    .speak { padding: 0 14px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="aura" aria-hidden="true"></canvas>
+
+<div class="stage">
+  <header class="top">
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><defs><linearGradient id="bolt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7ab6"/><stop offset=".5" stop-color="#ffb066"/><stop offset="1" stop-color="#5fd4ff"/></linearGradient></defs><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2L13.5 2Z" fill="url(#bolt)"/></svg>
+      EMA Lightning
+    </div>
+    <div class="meta" aria-live="polite">
+      <span id="mBackend"></span>
+      <span class="opt" id="mFirst" hidden>ilk ses <b></b></span>
+      <span class="opt" id="mRtf" hidden><b></b> gerçek zamandan hızlı</span>
+    </div>
+    <button class="icon-btn" id="download" title="Son sesi WAV olarak indir" aria-label="Son sesi WAV olarak indir" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
+    </button>
+    <button class="icon-btn" id="fullscreen" title="Tam ekran (F)" aria-label="Tam ekran">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+  </header>
+
+  <section class="words">
+    <p class="lead idle" id="lead" title="Tıkla, kendim söyleyeyim"></p>
+    <p class="sub" id="sub">Türkçe seslendirme, tamamen tarayıcınızda. Yazdığınız metin cihazınızdan çıkmaz. Cümleye tıklarsanız kendim okurum.</p>
+  </section>
+
+  <footer class="dock">
+    <div class="samples" id="samples"><span>Örnekler:</span></div>
+    <div class="settings" id="settings" hidden>
+      <label><span class="row">Hız <output id="speedOut">1.00×</output></span>
+        <input id="speed" type="range" min="0.6" max="1.6" step="0.05" value="1">
+      </label>
+      <label>Seed (aynı seed aynı sesi verir)
+        <span class="seed"><input id="seed" type="number" min="0" value="0"><button id="reseed" type="button">Rastgele</button></span>
+      </label>
+      <label>Çalıştığı yer
+        <select id="backend"><option value="webgpu">Ekran kartı (WebGPU)</option><option value="wasm">İşlemci (WASM)</option></select>
+      </label>
+      <label>Model hassasiyeti
+        <select id="precision"><option value="fp32">fp32: tam hassasiyet, 35 MB</option><option value="fp16">fp16: akustik model yarı boyut, 26 MB</option></select>
+        <span class="note">Aynı seed ile ikisi de aynı gürültüden başlar; değiştirip aynı cümleyi dinleyerek karşılaştırın.</span>
+      </label>
+    </div>
+    <div class="composer">
+      <textarea id="text" rows="1" aria-label="Seslendirilecek metin"
+        placeholder="Bir şey yazın. Sayılar, tarihler ve saatler de okunur: 14:30, 1.250.000 TL…">Yarın saat 09:45'te İstanbul'dan kalkan uçağınız 2 saat 15 dakika sürecek.</textarea>
+      <button class="icon-btn" id="toggleSettings" title="Ayarlar" aria-label="Ayarlar" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+      </button>
+      <button class="speak" id="speak" disabled>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2L13.5 2Z"/></svg>
+        <span>Yükleniyor</span>
+      </button>
+    </div>
+    <div class="hint" id="hint">⌘/Ctrl + Enter ile seslendirin</div>
+  </footer>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

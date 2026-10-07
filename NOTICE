@@ -1,0 +1,21 @@
+ema-lightning-web
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This demo redistributes, in modified form, works by others:
+
+- EMA Lightning model weights (ema.pt, decoder.pt) by canberkkkkkk, Apache-2.0.
+  https://huggingface.co/canberkkkkkk/ema-lightning
+  Modifications: converted to ONNX and split into text, sound and decoder graphs
+  (models/*.onnx); models/fp16/sound.onnx is an fp16 conversion of the sound graph.
+
+- normalizer-tr by Erdem Tuna, Apache-2.0, at commit d0bc1bc6523faa4f6257642190bb723b7f4274a5.
+  https://github.com/erdemtuna/normalizer-tr
+  Modifications: compiled to WebAssembly (models/normalizer.wasm) behind a small C ABI
+  (alloc, dealloc, normalize, result_ptr, result_len) using the "fallback" ambiguity policy.
+  The binary also contains its Rust dependencies and the Rust standard library; their
+  notices are in licenses/normalizer-tr-THIRD_PARTY_NOTICES.md.
+
+tts.js reimplements text handling, chunking and the frame timeline of the ema-lightning
+Python package (Apache-2.0) in JavaScript.
+
+onnxruntime-web (MIT, Microsoft) is loaded from a CDN at runtime and is not redistributed here.
