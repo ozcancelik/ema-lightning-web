@@ -18,10 +18,10 @@ let ema = null, audio = null, run = 0, playing = null, lastChunks = null;
 
 function hint(msg, err = false) { $("hint").textContent = msg; $("hint").className = "hint" + (err ? " err" : ""); }
 function setButton(mode) {
-  const b = $("speak"), label = b.querySelector("span");
+  const b = $("speak");
   b.classList.toggle("stop", mode === "stop");
   b.disabled = mode === "loading";
-  label.textContent = { loading: "Yükleniyor", speak: "Seslendir", stop: "Durdur" }[mode];
+  b.dataset.mode = mode;
 }
 const QUIPS = [
   "Boyum 34 megabayt, ama çenem düşük.",
@@ -58,7 +58,14 @@ for (const [name, text] of SAMPLES) {
 }
 $("text").addEventListener("input", autosize);
 autosize();
-$("speed").oninput = () => { $("speedOut").textContent = (+$("speed").value).toFixed(2) + "×"; };
+$("speed").oninput = () => {
+  const r = $("speed"), p = (r.value - r.min) / (r.max - r.min) * 100;
+  r.style.setProperty("--p", p + "%");
+  $("speedOut").textContent = (+r.value).toFixed(2) + "×";
+};
+$("speed").oninput();
+// double-click the slider to go back to normal speed
+$("speed").ondblclick = () => { $("speed").value = 1; $("speed").oninput(); };
 $("reseed").onclick = () => { $("seed").value = Math.floor(Math.random() * 100000); };
 $("toggleSettings").onclick = () => {
   const open = $("settings").hidden;

@@ -79,13 +79,22 @@
   .composer textarea { flex: 1; min-width: 0; resize: none; border: 0; background: transparent; padding: 10px 10px;
                        max-height: 9.5em; min-height: 2.6em; line-height: 1.5; outline: none; }
   .composer textarea::placeholder { color: rgba(154, 160, 200, 0.75); }
-  .speak { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 12px; padding: 0 18px;
+  .speak { background: var(--accent); color: var(--accent-ink); border: 1px solid transparent; border-radius: 12px; padding: 0 18px;
            height: 42px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;
            box-shadow: 0 0 0 0 rgba(255, 179, 92, 0); transition: box-shadow .3s ease, opacity .2s; white-space: nowrap; }
   .speak:hover:not(:disabled) { box-shadow: 0 0 28px rgba(255, 255, 255, 0.45); }
   .speak:disabled { opacity: .45; cursor: default; }
-  .speak.stop { background: transparent; color: var(--ink); border: 1px solid rgba(255, 255, 255, 0.6); }
+  .speak.stop { background: transparent; color: var(--ink); border-color: rgba(255, 255, 255, 0.6); }
   .speak svg { width: 15px; height: 15px; }
+  .speak .i-stop, .speak.stop .i-play { display: none; }
+  .speak.stop .i-stop { display: block; }
+  /* all labels share one cell so the button is always as wide as the longest one */
+  .speak .label { display: grid; }
+  .speak .label > span { grid-area: 1 / 1; text-align: center; visibility: hidden; }
+  .speak[data-mode=loading] [data-mode=loading], .speak[data-mode=speak] [data-mode=speak],
+  .speak[data-mode=stop] [data-mode=stop] { visibility: visible; }
+  .composer .icon-btn { width: 42px; height: 42px; border-radius: 12px; flex: none; }
+  .composer .icon-btn svg { width: 18px; height: 18px; }
   .hint { text-align: center; font-size: 12px; color: rgba(238, 240, 255, 0.6); min-height: 1.5em; }
   .hint.err { color: #ff9b9b; }
 
@@ -95,19 +104,51 @@
   .settings label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
   .settings .row { display: flex; justify-content: space-between; }
   .settings output { color: var(--ink); font-variant-numeric: tabular-nums; }
-  .settings input[type=range] { width: 100%; accent-color: #fff; }
-  .settings select, .settings input[type=number] { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line);
-              border-radius: 8px; padding: 6px 8px; }
+  .settings { color-scheme: dark; grid-template-columns: minmax(0, 1fr); }
+  .settings label { min-width: 0; }
+  .settings select { width: 100%; }
+  .settings select, .settings input[type=number] { height: 36px; background-color: rgba(255, 255, 255, 0.05);
+              border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; outline: none;
+              transition: border-color .15s, background-color .15s; }
+  .settings select:hover, .settings input[type=number]:hover { border-color: rgba(160, 170, 255, 0.35); }
+  .settings select:focus-visible, .settings input[type=number]:focus-visible { border-color: var(--focus);
+              outline: none; }
+  .settings select { appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 34px;
+              text-overflow: ellipsis;
+              background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c3c3e6' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+              background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; }
+  .settings option { background: #1d1748; color: var(--ink); }
+
+  /* speed slider: thin track, filled up to the thumb via --p */
+  .settings input[type=range] { --p: 40%; appearance: none; -webkit-appearance: none; width: 100%; height: 20px;
+              margin: 0; background: transparent; cursor: pointer; }
+  .settings input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px;
+              background: linear-gradient(90deg, #fff var(--p), rgba(255, 255, 255, 0.16) var(--p)); }
+  .settings input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.16); }
+  .settings input[type=range]::-moz-range-progress { height: 4px; border-radius: 4px; background: #fff; }
+  .settings input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px;
+              border-radius: 50%; background: #fff; border: 0; box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12), 0 2px 8px rgba(10, 6, 40, 0.5);
+              transition: box-shadow .15s, transform .15s; }
+  .settings input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 0;
+              box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12), 0 2px 8px rgba(10, 6, 40, 0.5); }
+  .settings input[type=range]:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.18), 0 2px 8px rgba(10, 6, 40, 0.5); }
+  .settings input[type=range]:active::-webkit-slider-thumb { transform: scale(1.1); }
+  .settings input[type=range]:focus-visible { outline: none; }
+  .settings input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--focus); }
+  .settings input[type=range]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--focus); }
+  .settings .scale { display: flex; justify-content: space-between; font-size: 11px; color: rgba(238, 240, 255, 0.45);
+              font-variant-numeric: tabular-nums; margin-top: -2px; }
   .settings .note { font-size: 12px; color: rgba(238, 240, 255, 0.55); }
   .settings .seed { display: flex; gap: 6px; }
   .settings .seed input { flex: 1; min-width: 0; }
-  .settings .seed button { background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px;
-                           color: var(--muted); cursor: pointer; }
+  .settings .seed button { height: 36px; background: transparent; border: 1px solid var(--line); border-radius: 8px;
+                           padding: 0 12px; color: var(--muted); cursor: pointer; }
+  .settings .seed button:hover { color: var(--ink); border-color: rgba(160, 170, 255, 0.35); }
 
   @media (max-width: 640px) {
     .meta .opt { display: none; }
     .words { bottom: calc(30vh + 40px); }
-    .speak span { display: none; }
+    .speak .label { display: none; }
     .speak { padding: 0 14px; }
   }
 </style>
@@ -118,7 +159,7 @@
 <div class="stage">
   <header class="top">
     <div class="mark">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><defs><linearGradient id="bolt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7ab6"/><stop offset=".5" stop-color="#ffb066"/><stop offset="1" stop-color="#5fd4ff"/></linearGradient></defs><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2L13.5 2Z" fill="url(#bolt)"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><defs><linearGradient id="wave" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7ab6"/><stop offset=".5" stop-color="#ffb066"/><stop offset="1" stop-color="#5fd4ff"/></linearGradient></defs><path d="M3 10v4M7.5 6v12M12 3v18M16.5 7v10M21 10v4" stroke="url(#wave)" stroke-width="2.4" stroke-linecap="round"/></svg>
       EMA Lightning
     </div>
     <div class="meta" aria-live="polite">
@@ -144,6 +185,7 @@
     <div class="settings" id="settings" hidden>
       <label><span class="row">Hız <output id="speedOut">1.00×</output></span>
         <input id="speed" type="range" min="0.6" max="1.6" step="0.05" value="1">
+        <span class="scale" aria-hidden="true"><span>0.6×</span><span>1.6×</span></span>
       </label>
       <label>Seed (aynı seed aynı sesi verir)
         <span class="seed"><input id="seed" type="number" min="0" value="0"><button id="reseed" type="button">Rastgele</button></span>
@@ -162,9 +204,10 @@
       <button class="icon-btn" id="toggleSettings" title="Ayarlar" aria-label="Ayarlar" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
       </button>
-      <button class="speak" id="speak" disabled>
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2L13.5 2Z"/></svg>
-        <span>Yükleniyor</span>
+      <button class="speak" id="speak" data-mode="loading" disabled>
+        <svg class="i-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5Z"/></svg>
+        <svg class="i-stop" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg>
+        <span class="label"><span data-mode="loading">Yükleniyor</span><span data-mode="speak">Seslendir</span><span data-mode="stop">Durdur</span></span>
       </button>
     </div>
     <div class="hint" id="hint">⌘/Ctrl + Enter ile seslendirin</div>
