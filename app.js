@@ -68,9 +68,9 @@ if (IOS) {
 }
 
 // settings are remembered in this browser
-const SETTINGS_KEY = "ema-settings", SETTINGS = ["speed", "seed", "backend", "precision"];
+const SETTINGS_KEY = "ema-settings", SETTINGS = ["speed", "pitch", "seed", "backend", "precision"];
 function saveSettings() {
-  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(Object.fromEntries(SETTINGS.map((id) => [id, $(id).value])))); } catch {}
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(Object.fromEntries(SETTINGS.map((id) => [id, $(id).value])))); } catch { }
 }
 try {
   const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
@@ -79,17 +79,29 @@ try {
     if (v == null) continue;
     if (el.tagName === "SELECT" ? [...el.options].some((o) => o.value === v) : Number.isFinite(+v)) el.value = v;
   }
-} catch {}
+} catch { }
 for (const id of SETTINGS) $(id).addEventListener("change", saveSettings);
 
+const fill = (r) => r.style.setProperty("--p", (r.value - r.min) / (r.max - r.min) * 100 + "%");
 $("speed").oninput = () => {
-  const r = $("speed"), p = (r.value - r.min) / (r.max - r.min) * 100;
-  r.style.setProperty("--p", p + "%");
-  $("speedOut").textContent = (+r.value).toFixed(2) + "×";
+  fill($("speed"));
+  $("speedOut").textContent = (+$("speed").value).toFixed(2) + "×";
 };
 $("speed").oninput();
 // double-click the slider to go back to normal speed
 $("speed").ondblclick = () => { $("speed").value = 1; $("speed").oninput(); saveSettings(); };
+
+
+$("pitch").oninput = () => {
+  const v = +$("pitch").value;
+  fill($("pitch"));
+  $("pitchOut").textContent = v ? `${v > 0 ? "+" : "−"}${Math.abs(v)} yarım ton` : "Doğal";
+  for (const b of $("presets").children) b.setAttribute("aria-pressed", String(+b.dataset.pitch === v));
+};
+$("pitch").oninput();
+$("pitch").ondblclick = () => { $("pitch").value = 0; $("pitch").oninput(); saveSettings(); };
+for (const b of $("presets").children)
+  b.onclick = () => { $("pitch").value = b.dataset.pitch; $("pitch").oninput(); saveSettings(); };
 $("reseed").onclick = () => { $("seed").value = Math.floor(Math.random() * 100000); saveSettings(); };
 $("toggleSettings").onclick = () => {
   const open = $("settings").hidden;
@@ -136,7 +148,7 @@ async function loadModel() {
       aura?.setCharge(p);
       $("mBackend").textContent = `Model yükleniyor, %${Math.round(p * 100)}`;
     }, precision);
-    for await (const _ of ema.stream("Merhaba.")) {} // compiles the GPU shaders once
+    for await (const _ of ema.stream("Merhaba.")) { } // compiles the GPU shaders once
     aura?.setCharge(1);
     $("mBackend").innerHTML = (backend === "webgpu" ? "<b>Ekran kartında</b> çalışıyor" : "<b>İşlemcide</b> çalışıyor")
       + `, <b>${ema.precision}</b>`;
@@ -166,9 +178,26 @@ function audioGraph() {
 
 // ---------- speaking ----------
 
+// Plays a stream of chunks `ratio` times faster by linear interpolation, carrying the read position and the last
+// sample across chunks so there are no clicks at the joins.
+function resampler(ratio) {
+  if (ratio === 1) return (x) => x;
+  let pos = 0, prev = 0; // read position relative to the current chunk; in [-1, 0) it falls between prev and x[0]
+  return (x) => {
+    const n = x.length, y = new Float32Array(Math.ceil((n - pos) / ratio) + 1);
+    let k = 0;
+    for (; pos <= n - 1; pos += ratio) {
+      const i = Math.floor(pos), f = pos - i, a = i < 0 ? prev : x[i], b = i + 1 < n ? x[i + 1] : a;
+      y[k++] = a + (b - a) * f;
+    }
+    pos -= n; prev = x[n - 1];
+    return y.subarray(0, k);
+  };
+}
+
 function stop() {
   run++;
-  if (playing) for (const s of playing.sources) try { s.stop(); } catch {}
+  if (playing) for (const s of playing.sources) try { s.stop(); } catch { }
   playing = null;
   setButton("speak");
   idleLead();
@@ -192,12 +221,18 @@ $("speak").onclick = async () => {
   requestAnimationFrame(() => follow(id));
 
   try {
+    const ratio = 2 ** (+$("pitch").value / 12), shift = resampler(ratio);
     const stream = ema.stream(text, {
-      speed: +$("speed").value, seed: Math.max(0, +$("seed").value || 0), stats,
-      onPiece: (info) => { p.pending = { ...info, start: null }; p.pieces.push(p.pending); },
+      speed: +$("speed").value / ratio, seed: Math.max(0, +$("seed").value || 0), stats,
+      onPiece: (info) => {
+        p.pending = { ...info, starts: info.starts.map((s) => s / ratio), seconds: info.seconds / ratio, start: null };
+        p.pieces.push(p.pending);
+      },
     });
-    for await (const chunk of stream) {
+    for await (const raw of stream) {
       if (id !== run) return;
+      const chunk = shift(raw);
+      if (!chunk.length) continue;
       if (first === null) first = performance.now() - t0;
       const buf = ctx.createBuffer(1, chunk.length, RATE);
       buf.copyToChannel(chunk, 0);

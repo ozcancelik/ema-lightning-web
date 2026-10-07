@@ -137,7 +137,7 @@
   .settings { position: absolute; right: 0; bottom: calc(100% + 8px); width: 280px; padding: 16px; border-radius: 16px;
               background: rgba(24, 18, 60, 0.85); border: 1px solid var(--line); display: grid; gap: 14px;
               backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
-  .settings label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+  .settings label, .settings .group { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
   .settings .row { display: flex; justify-content: space-between; }
   .settings output { color: var(--ink); font-variant-numeric: tabular-nums; }
   .settings { color-scheme: dark; grid-template-columns: minmax(0, 1fr); }
@@ -180,6 +180,12 @@
   .settings .seed button { height: 36px; background: transparent; border: 1px solid var(--line); border-radius: 8px;
                            padding: 0 12px; color: var(--muted); cursor: pointer; }
   .settings .seed button:hover { color: var(--ink); border-color: rgba(160, 170, 255, 0.35); }
+  .settings .presets { display: flex; gap: 6px; }
+  .settings .presets button { flex: 1; height: 32px; background: transparent; border: 1px solid var(--line); border-radius: 8px;
+                              color: var(--muted); cursor: pointer; font: inherit; transition: color .15s, border-color .15s, background-color .15s; }
+  .settings .presets button:hover { color: var(--ink); border-color: rgba(160, 170, 255, 0.35); }
+  .settings .presets button[aria-pressed=true] { color: var(--ink); background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.4); }
+  .settings .presets button:focus-visible { outline: none; border-color: var(--focus); }
 
   @media (max-width: 640px) {
     .meta .opt { display: none; }
@@ -209,6 +215,10 @@
     <button class="icon-btn" id="fullscreen" title="Tam ekran (F)" aria-label="Tam ekran">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
     </button>
+    <a class="icon-btn" href="https://github.com/ozcancelik/ema-lightning-web" target="_blank" rel="noopener"
+       title="Kaynak kod (GitHub)" aria-label="Kaynak kod GitHub'da">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
+    </a>
   </header>
 
   <section class="words">
@@ -223,6 +233,15 @@
         <input id="speed" type="range" min="0.6" max="1.6" step="0.05" value="1">
         <span class="scale" aria-hidden="true"><span>0.6×</span><span>1.6×</span></span>
       </label>
+      <div class="group">
+        <span class="row">Ses tonu <output id="pitchOut">Doğal</output></span>
+        <div class="presets" id="presets" role="group" aria-label="Hazır ses tonları">
+          <button type="button" data-pitch="-2.5">Kalın</button><button type="button" data-pitch="0">Normal</button><button type="button" data-pitch="3">Çocuk</button>
+        </div>
+        <input id="pitch" type="range" min="-4" max="4" step="0.5" value="0" aria-label="Ses tonu, yarım ton">
+        <span class="scale" aria-hidden="true"><span>−4</span><span>+4</span></span>
+        <span class="note">Aynı sesin perdesi değişir, hız aynı kalır. ±3'ün ötesi yapay duyulur.</span>
+      </div>
       <label>Seed (aynı seed aynı sesi verir)
         <span class="seed"><input id="seed" type="number" min="0" value="0"><button id="reseed" type="button">Rastgele</button></span>
       </label>
