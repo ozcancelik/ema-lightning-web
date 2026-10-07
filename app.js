@@ -58,6 +58,30 @@ for (const [name, text] of SAMPLES) {
 }
 $("text").addEventListener("input", autosize);
 autosize();
+
+// iPhone and iPad (iPadOS reports itself as a Mac with touch): the WebGPU build of onnxruntime gets the tab killed
+// there, so they start on the plain WASM build.
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+if (IOS) {
+  $("backend").value = "wasm";
+  $("backend").querySelector("option[value=webgpu]").textContent += ", iPhone/iPad'de çökebilir";
+}
+
+// settings are remembered in this browser
+const SETTINGS_KEY = "ema-settings", SETTINGS = ["speed", "seed", "backend", "precision"];
+function saveSettings() {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(Object.fromEntries(SETTINGS.map((id) => [id, $(id).value])))); } catch {}
+}
+try {
+  const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+  for (const id of SETTINGS) {
+    const el = $(id), v = saved[id];
+    if (v == null) continue;
+    if (el.tagName === "SELECT" ? [...el.options].some((o) => o.value === v) : Number.isFinite(+v)) el.value = v;
+  }
+} catch {}
+for (const id of SETTINGS) $(id).addEventListener("change", saveSettings);
+
 $("speed").oninput = () => {
   const r = $("speed"), p = (r.value - r.min) / (r.max - r.min) * 100;
   r.style.setProperty("--p", p + "%");
@@ -65,8 +89,8 @@ $("speed").oninput = () => {
 };
 $("speed").oninput();
 // double-click the slider to go back to normal speed
-$("speed").ondblclick = () => { $("speed").value = 1; $("speed").oninput(); };
-$("reseed").onclick = () => { $("seed").value = Math.floor(Math.random() * 100000); };
+$("speed").ondblclick = () => { $("speed").value = 1; $("speed").oninput(); saveSettings(); };
+$("reseed").onclick = () => { $("seed").value = Math.floor(Math.random() * 100000); saveSettings(); };
 $("toggleSettings").onclick = () => {
   const open = $("settings").hidden;
   $("settings").hidden = !open;
@@ -102,7 +126,9 @@ async function loadModel() {
     hint("Bu tarayıcıda WebGPU yok; model işlemcide çalışacak, biraz daha yavaş olur.");
   }
   setButton("loading");
+  const old = ema;
   ema = null;
+  await old?.release();
   $("mBackend").textContent = "Model yükleniyor…";
   try {
     const precision = $("precision").value;
@@ -122,7 +148,7 @@ async function loadModel() {
     hint(`Model yüklenemedi: ${e.message}. Sayfayı yenileyin ya da ayarlardan İşlemci'yi seçin.`, true);
   }
 }
-$("backend").onchange = load;
+$("backend").onchange = () => { if (playing) stop(); load(); };
 $("precision").onchange = () => { if (playing) stop(); load(); };
 
 function audioGraph() {

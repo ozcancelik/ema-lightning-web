@@ -1,9 +1,29 @@
 // EMA Lightning in the browser: text -> 48 kHz audio with onnxruntime-web (WebGPU, or WASM as fallback).
 // Mirrors ema_lightning's frontend.py, chunker.py and engine.py; export/verify.py checks the same math in Python.
-import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.webgpu.min.mjs";
 import { loadNormalizer } from "./normalizer.js";
 
-ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/";
+// The WebGPU bundle's wasm is twice the size of the plain one (27 MB vs 14 MB), so the WASM backend loads its own
+// bundle; on iPhone the big one gets the tab killed. Picked in EMA.load.
+const ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/";
+let ort = null;
+
+// Model files are kept in Cache Storage, so they download once instead of on every visit or settings change.
+// Bump the version when anything in models/ changes; older caches are deleted on the next load.
+const CACHE = "ema-models-v1";
+
+async function bytes(url) {
+  let cache = null;
+  try {
+    for (const key of await caches.keys()) if (key.startsWith("ema-models-") && key !== CACHE) await caches.delete(key);
+    cache = await caches.open(CACHE);
+  } catch {} // no Cache Storage outside a secure context: plain fetch
+  const hit = await cache?.match(url).catch(() => null);
+  if (hit) return hit.arrayBuffer();
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  try { await cache?.put(url, res.clone()); } catch {} // full storage: still works, just not cached
+  return res.arrayBuffer();
+}
 
 export const RATE = 48000;
 const FIRST_WINDOW = 25; // first decoded window is one second, so audio starts early
@@ -169,16 +189,18 @@ export class EMA {
   // precision "fp16" loads the half-size sound graph from models/fp16/ (fp32 at its edges). Text and decoder stay
   // fp32: on WebGPU their fp16 versions go wrong (see export/to_fp16.py).
   static async load(backend = "webgpu", base = "models/", onProgress = () => {}, precision = "fp32") {
+    ort = await import(ORT + (backend === "webgpu" ? "ort.webgpu.min.mjs" : "ort.wasm.min.mjs"));
+    ort.env.wasm.wasmPaths = ORT;
     const meta = await (await fetch(base + "meta.json")).json();
     const opts = { executionProviders: backend === "webgpu" ? ["webgpu", "wasm"] : ["wasm"],
                    graphOptimizationLevel: "all" };
     const sessions = {};
     onProgress("normalizer", 0);
-    const normalize = await loadNormalizer(base + "normalizer.wasm");
+    const normalize = await loadNormalizer(await bytes(base + "normalizer.wasm"));
     const names = ["text", "sound", "decoder"];
     for (const [i, name] of names.entries()) {
       onProgress(name, (i + 1) / (names.length + 1));
-      const buf = await (await fetch(base + (precision === "fp16" && name === "sound" ? "fp16/" : "") + name + ".onnx")).arrayBuffer();
+      const buf = await bytes(base + (precision === "fp16" && name === "sound" ? "fp16/" : "") + name + ".onnx");
       sessions[name] = await ort.InferenceSession.create(buf, opts);
     }
     const ema = new EMA(meta, sessions, backend, normalize);
@@ -194,6 +216,11 @@ export class EMA {
     this.vocab = meta.vocab;
     this.stoi = new Map(meta.vocab.map((ch, i) => [ch, i]));
     this.alpha = new Set(meta.vocab.filter((v) => v.length === 1));
+  }
+
+  // frees the sessions' wasm and GPU memory; the object cannot be used afterwards
+  async release() {
+    for (const s of [this.text, this.sound, this.decoder]) await s?.release().catch(() => {});
   }
 
   pieces(text, speed) {
